@@ -1,0 +1,8 @@
+evaluations/
+*.pkl
+*.pkl_log
+ugjobs
+job*
+lastRun
+ugjobs
+plot.py

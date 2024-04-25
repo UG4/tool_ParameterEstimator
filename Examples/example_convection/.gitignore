@@ -1,0 +1,4 @@
+evaluations/
+*.pkl
+*.pkl_log
+vtk/

@@ -24,7 +24,7 @@ It is recommended to install the following dependencies before compiling UG4:
 
 ## Usage
 
-To use the plugin, you need to have a model implemented in UG4. The model should be run by a Lua script. For each model, you need to provide a custom python script that defines the model and the parameters to be estimated, as well as the experimental data. An example of such a script is given below. Examples can be found in [example](example/) Directory.
+To use the plugin, you need to have a model implemented in UG4. The model should be run by a Lua script. For each model, you need to provide a custom python script that defines the model and the parameters to be estimated, as well as the experimental data. An example of such a script is given below. Examples can be found in [Examples](Examples/) Directory.
 
 ### Parameters
 
