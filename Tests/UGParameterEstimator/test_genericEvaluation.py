@@ -1,12 +1,26 @@
 import unittest
 import os
 import sys
-sys.path.insert(0, os.path.abspath('../..'))
-import numpy as np
 from UGParameterEstimator import ErroredEvaluation, GenericEvaluation
+import numpy as np
+
+sys.path.insert(0, os.path.abspath('../..'))
 
 class GenericEvaluationTests(unittest.TestCase):
+    """
+    A test class for validating the functionality of the GenericEvaluation class.
 
+    This class performs various unit tests to ensure that the methods and functions 
+    of the GenericEvaluation class are working correctly. This includes setting up test data, 
+    performing the tests, and verifying the results.
+
+    Attributes:
+        None
+
+    Methods:
+        setUp: A special method that is called before each test case. It is used to 
+               set up test data or define the initial state for tests.
+    """
     def setUp(self):
         with open("0_measurement.json", "w") as f:
             f.write("""
@@ -113,12 +127,11 @@ class GenericEvaluationTests(unittest.TestCase):
 
         if isinstance(self.series0, ErroredEvaluation):
             print(self.series0.reason)
-        
+
         if isinstance(self.series1, ErroredEvaluation):
             print(self.series1.reason)
 
     def tearDown(self):
-
         os.remove("0_measurement.json")
         os.remove("1_measurement.json")
         os.remove("2_measurement.csv")
@@ -126,7 +139,6 @@ class GenericEvaluationTests(unittest.TestCase):
         os.remove("4_measurement.json")
 
     def test_read_in(self):
-
         self.assertFalse(isinstance(self.series0, ErroredEvaluation))
         self.assertFalse(isinstance(self.series1, ErroredEvaluation))
 
@@ -136,24 +148,18 @@ class GenericEvaluationTests(unittest.TestCase):
         self.assertEqual(self.series1.data, [1.5, 2.5, 1.5, 1])
 
     def test_parse_csv(self):
-
         self.series2 = GenericEvaluation.parse(".", 2)
-
         if isinstance(self.series2, ErroredEvaluation):
             print(self.series2.reason)
-
         self.assertFalse(isinstance(self.series2, ErroredEvaluation))
-
         self.assertEqual(self.series2.times, [0.5, 1, 2])
         self.assertEqual(self.series2.data, [3, 2.4, 4.623])
 
     def test_error_on_not_finished(self):
-
         self.series3 = GenericEvaluation.parse(".", 3)
         self.assertTrue(isinstance(self.series3, ErroredEvaluation))
 
     def test_error_on_malformed(self):
-
         self.series4 = GenericEvaluation.parse(".", 4)
         self.assertTrue(isinstance(self.series4, ErroredEvaluation))
 

@@ -2,7 +2,9 @@ import numpy as np
 import math
 import os
 from abc import ABC, abstractmethod
-from UGParameterEstimator import ParameterManager, Evaluation, ParameterOutputAdapter, ErroredEvaluation
+from UGParameterEstimator import ParameterManager, Evaluation, ParameterOutputAdapter, ErroredEvaluation, setup_logger
+
+evaluator_logger = setup_logger.logger.getChild("evaluator")
 
 class Evaluator(ABC):
     """Evaluator abstract base class
@@ -20,7 +22,7 @@ class Evaluator(ABC):
 
     @property
     @abstractmethod
-    def parallelism(self):        
+    def parallelism(self):
         """Returns the parallelism of the evaluator
 
         :return: parallelism of the evaluator
@@ -28,7 +30,7 @@ class Evaluator(ABC):
         """
         pass
 
-    @abstractmethod    
+    @abstractmethod
     def evaluate(self, evaluationlist, transform=True, tag=""):
         """Evaluates the parameters given in evaluationlist using UG4, and the adapters set in the constructor.
 
@@ -60,7 +62,7 @@ class Evaluator(ABC):
         :param tag: tag to store the evaluations under in the result object
         :type tag: string
         """
-        self.cache.update(evaluations)       
+        self.cache.update(evaluations)
         self.serial_evaluation_count += 1
         self.total_evaluation_count += len(evaluations)
         if self.resultobj is not None:
@@ -97,7 +99,7 @@ class Evaluator(ABC):
         self.total_evaluation_count = 0
 
 
-    def getStatistics(self):    
+    def getStatistics(self):
         """returns the internal statistics as a string representation
         :return: string with statistics information
         :rtype: string
@@ -140,6 +142,7 @@ class Evaluator(ABC):
         import UGParameterEstimator
         if "UGSUBMIT_TYPE" in os.environ:
             print("Detected cluster " + os.environ["UGSUBMIT_TYPE"] + ", using ClusterEvaluator")
+            evaluator_logger.debug("Detected cluster " + os.environ["UGSUBMIT_TYPE"] + ", using ClusterEvaluator")
             return UGParameterEstimator.ClusterEvaluator(
                 luafilename=luafile,
                 directory=directory,
@@ -153,4 +156,5 @@ class Evaluator(ABC):
                 weight=weight)
         else:
             print("No cluster detected, using LocalEvaluator")
+            evaluator_logger.debug("No cluster detected, using LocalEvaluator")
             return UGParameterEstimator.LocalEvaluator(luafile, directory, parametermanager, evaluation_type, parameter_output_adapter, fixedparameters, threadcount, cliparameters, weight=weight)

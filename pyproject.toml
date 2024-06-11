@@ -10,8 +10,8 @@ authors = [
 ]
 description = "A package for parameter estimation in UG4"
 readme = "README.md"
-requires-python = ">=3.6"
-version = "0.0.1"
+requires-python = ">=3.7"
+version = "0.0.2"
 dependencies = [
     "numpy",
     "scipy",

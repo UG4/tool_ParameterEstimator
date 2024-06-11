@@ -65,11 +65,7 @@ In `GenericEvalution` projects you can have multiple measurements the optimizer 
 
 ### Example
 
-Make sure that the environment variable `UG4_ROOT` is set and the following lines are appended to the top of the file:
-```python
-import sys, os
-sys.path.append(os.path.join(os.environ["UG4_ROOT"], "plugins", "ParameterEstimator", "python"))
-```
+Make sure that the environment variable `UG4_ROOT` is set to the root directory of your UG4 installation.
 
 The package can be imported with
 
@@ -80,9 +76,6 @@ The package can be imported with
 ```python
 #!/usr/bin/env python3
 
-import sys
-import os
-sys.path.append(os.path.join(os.environ["UG4_ROOT"], "plugins", "ParameterEstimator", "python"))
 from UGParameterEstimator import *
 
 # Define the parameters

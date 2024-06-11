@@ -4,9 +4,10 @@ import io
 import time
 import csv
 from shutil import copyfile
-from UGParameterEstimator import ParameterManager, Evaluation, ParameterOutputAdapter, ErroredEvaluation
+from UGParameterEstimator import ParameterManager, Evaluation, ParameterOutputAdapter, ErroredEvaluation, setup_logger
 from .evaluator import Evaluator
 
+cluster_logger = setup_logger.logger.getChild("clusterEvaluator")
 
 class ClusterEvaluator(Evaluator):
     """Evaluator for Clusters supporting UGSUBMIT.
@@ -112,10 +113,10 @@ class ClusterEvaluator(Evaluator):
             absolute_script_path = os.getcwd() + "/" + self.luafilename
 
             if not os.path.isfile(absolute_script_path):
-                print("Luafile not found! " + absolute_script_path)
+                cluster_logger.error(f"Luafile not found! {absolute_script_path}")
                 exit()
             if not os.path.exists(absolute_directory_path):
-                print("Exchange directory not found! " + absolute_directory_path)
+                cluster_logger.error(f"Exchange directory not found! {absolute_directory_path}")
                 exit()
 
             callParameters = ["ugsubmit", str(self.threadcount)]
@@ -134,27 +135,25 @@ class ClusterEvaluator(Evaluator):
             self.id += 1
 
             # submit the job and parse the received id
+            cluster_logger.debug(f"Starting process {j} with command: {callParameters}")
             process = subprocess.Popen(callParameters, stdout=subprocess.PIPE)
             proc_id = process.pid
             process.wait()
 
-            print("\n\nDbg: =============================================================")
-            print(f"Dbg: Process id with process.pid: {proc_id}\n")
+            cluster_logger.debug(f"Job id with process.pid: {proc_id}")
 
-            print("Dbg: stdout from ugsubmit: ")
             for line in io.TextIOWrapper(process.stdout, encoding="UTF-8"):
-                print(line)
                 if line.startswith("Received job id"):
                     try:
                         self.jobids[j] = int(line.split(" ")[3])
+                        cluster_logger.debug(f"Job id from ugsubmit: {self.jobids[j]}")
                     except ValueError:
-                        print("\nError parsing job id!")
-                        print(f"direct process id from 'process.pid': {process.pid}")
-                        print(f"line from process.stdout: {line} ")
-                        print("Tmp-Fix: taking direct process id as job id\n")
+                        cluster_logger.warning("Error parsing job id!")
+                        cluster_logger.debug(f"direct process id from 'process.pid': {process.pid}")
+                        cluster_logger.debug(f"line from process.stdout: {line} ")
+                        cluster_logger.warning("Tmp-Fix: taking direct process id as job id\n")
                         self.jobids[j] = proc_id
 
-            print(f"Dbg: Process id with stdout: {self.jobids[j]}\n")
 
             # to avoid bugs with the used scheduler on cesari
             time.sleep(1)
@@ -163,6 +162,7 @@ class ClusterEvaluator(Evaluator):
 
             # wait until all jobs are finished
             # for this, call uginfo and parse the output
+            cluster_logger.debug("Waiting for jobs to finish...")
             process = subprocess.Popen(["uginfo"], stdout=subprocess.PIPE)
             process.wait()
             lines = io.TextIOWrapper(process.stdout, encoding="UTF-8").readlines()
@@ -184,6 +184,7 @@ class ClusterEvaluator(Evaluator):
                     break
 
             if finished:
+                cluster_logger.debug("All jobs finished.")
                 break
 
             time.sleep(5)
@@ -235,6 +236,7 @@ class ClusterEvaluator(Evaluator):
             jobid = int(row["JOBID"])
             if jobid in self.jobids:
                 print("Cancelling " + str(jobid))
+                cluster_logger.info(f"Cancelling job {jobid}")
 
                 # cancel them using ugcancel
                 process2 = subprocess.Popen(["ugcancel", str(jobid)], stdout=subprocess.PIPE)
