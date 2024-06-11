@@ -138,8 +138,12 @@ class ClusterEvaluator(Evaluator):
             proc_id = process.pid
             process.wait()
 
-            # print(f"Process id direct: {proc_id}")
+            print("\n\nDbg: =============================================================")
+            print(f"Dbg: Process id with process.pid: {proc_id}\n")
+
+            print("Dbg: stdout from ugsubmit: ")
             for line in io.TextIOWrapper(process.stdout, encoding="UTF-8"):
+                print(line)
                 if line.startswith("Received job id"):
                     try:
                         self.jobids[j] = int(line.split(" ")[3])
@@ -149,7 +153,8 @@ class ClusterEvaluator(Evaluator):
                         print(f"line from process.stdout: {line} ")
                         print("Tmp-Fix: taking direct process id as job id\n")
                         self.jobids[j] = proc_id
-            # print(f"Job id indirect: {self.jobids[j]}")
+
+            print(f"Dbg: Process id with stdout: {self.jobids[j]}\n")
 
             # to avoid bugs with the used scheduler on cesari
             time.sleep(1)
