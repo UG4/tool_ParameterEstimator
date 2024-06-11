@@ -142,8 +142,10 @@ class ClusterEvaluator(Evaluator):
 
             cluster_logger.debug(f"Job id with process.pid: {proc_id}")
 
+            cluster_logger.debug("\n\nugsubmit output:\n")
             for line in io.TextIOWrapper(process.stdout, encoding="UTF-8"):
                 if line.startswith("Received job id"):
+                    cluster_logger.debug(line)
                     try:
                         self.jobids[j] = int(line.split(" ")[3])
                         cluster_logger.debug(f"Job id from ugsubmit: {self.jobids[j]}")
@@ -154,9 +156,13 @@ class ClusterEvaluator(Evaluator):
                         cluster_logger.warning("Tmp-Fix: taking direct process id as job id\n")
                         self.jobids[j] = proc_id
 
+            cluster_logger.debug("\n\n")
+
             if self.jobids[j] is None:
                 cluster_logger.warning("Job id from ugsubmit is None! Taking direct process id as job id")
                 self.jobids[j] = proc_id
+
+            cluster_logger.debug(f"Job id: {self.jobids[j]}")
 
             # to avoid bugs with the used scheduler on cesari
             time.sleep(1)
