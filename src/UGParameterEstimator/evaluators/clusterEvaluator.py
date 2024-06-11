@@ -144,6 +144,7 @@ class ClusterEvaluator(Evaluator):
 
             for line in io.TextIOWrapper(process.stdout, encoding="UTF-8"):
                 if line.startswith("Received job id"):
+                    cluster_logger.debug(line)
                     try:
                         self.jobids[j] = int(line.split(" ")[3])
                         cluster_logger.debug(f"Job id from ugsubmit: {self.jobids[j]}")
@@ -166,6 +167,7 @@ class ClusterEvaluator(Evaluator):
 
             # wait until all jobs are finished
             # for this, call uginfo and parse the output
+            cluster_logger.debug("Waiting for jobs to finish...")
             process = subprocess.Popen(["uginfo"], stdout=subprocess.PIPE)
             process.wait()
             lines = io.TextIOWrapper(process.stdout, encoding="UTF-8").readlines()
