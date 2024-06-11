@@ -154,6 +154,9 @@ class ClusterEvaluator(Evaluator):
                         cluster_logger.warning("Tmp-Fix: taking direct process id as job id\n")
                         self.jobids[j] = proc_id
 
+            if self.jobids[j] is None:
+                cluster_logger.warning("Job id from ugsubmit is None! Taking direct process id as job id")
+                self.jobids[j] = proc_id
 
             # to avoid bugs with the used scheduler on cesari
             time.sleep(1)
