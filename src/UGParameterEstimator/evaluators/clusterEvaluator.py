@@ -180,6 +180,8 @@ class ClusterEvaluator(Evaluator):
             # are all of our jobs finished?
             finished = True
 
+            cluster_logger.debug(f"TMP: iteration over uginfo output; lines: {lines}")
+
             for row in reader:
                 jobid = int(row["JOBID"])
                 if (jobid in self.jobids) and (row["STATE"] == "RUNNING" or row["STATE"] == "PENDING"):
@@ -191,7 +193,10 @@ class ClusterEvaluator(Evaluator):
                 cluster_logger.debug("All jobs finished.")
                 break
 
-            time.sleep(5)
+            time.sleep(30)  # default: 5
+
+        cluster_logger.debug(f"TMP: iteration over evaluationlist; evaluationlist: {evaluationlist}")
+        cluster_logger.debug(f"TMP: iteration over evaluationlist: len(evaluationlist): {len(evaluationlist)}")
 
         # now we can parse the measurement files
         for i in range(len(evaluationlist)):
@@ -222,6 +227,9 @@ class ClusterEvaluator(Evaluator):
         # make sure all (of our) jobs are cancelled or finished when the evaluation is finished
 
         cluster_logger.info("Got exit signal, cancelling jobs.")
+        cluster_logger.debug(f"type: {type}")
+        cluster_logger.debug(f"value: {value}")
+        cluster_logger.debug(f"traceback: {traceback}")
 
         if not self.jobids:
             return None
@@ -238,11 +246,12 @@ class ClusterEvaluator(Evaluator):
 
         reader = csv.DictReader(lines, delimiter=" ", skipinitialspace=True)
 
+        cluster_logger.debug(f"TMP: iteration over reader in exit; lines: {lines}")
         for row in reader:
             jobid = int(row["JOBID"])
             if jobid in self.jobids:
                 print("Cancelling " + str(jobid))
-                cluster_logger.info(f"Cancelling job {jobid}")
+                cluster_logger.info(f"Cancelling job {jobid} in exit function")
 
                 # cancel them using ugcancel
                 process2 = subprocess.Popen(["ugcancel", str(jobid)], stdout=subprocess.PIPE)

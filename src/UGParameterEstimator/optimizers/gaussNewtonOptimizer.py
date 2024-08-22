@@ -3,7 +3,7 @@ from UGParameterEstimator import LineSearch, Result, setup_logger
 import numpy as np
 from scipy import stats
 
-newtonOptimizer_logger = setup_logger.logger.getChild("newtonOptimizer")
+newtonOptimizer_logger = setup_logger.logger.getChild("gaussNewtonOptimizer")
 
 class GaussNewtonOptimizer(Optimizer):
     def __init__(self, linesearchmethod: LineSearch, maxiterations=15, epsilon=1e-3, minreduction=1e-4, differencing=Optimizer.Differencing.forward):
@@ -50,6 +50,7 @@ class GaussNewtonOptimizer(Optimizer):
         first_S = -1
 
         for i in range(self.maxiterations):
+            newtonOptimizer_logger.debug(f"Starting iteration {i} with parameters {guess}")
 
             jacobi_result = self.getJacobiMatrix(guess, evaluator, target, result)
             if jacobi_result is None:
