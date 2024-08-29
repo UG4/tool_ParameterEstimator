@@ -1,8 +1,9 @@
 from .optimizer import Optimizer
-from UGParameterEstimator import LineSearch, Result
+from UGParameterEstimator import LineSearch, Result, setup_logger
 import numpy as np
 from scipy import stats
 
+newtonOptimizer_logger = setup_logger.logger.getChild("gaussNewtonOptimizer")
 
 class GaussNewtonOptimizer(Optimizer):
     def __init__(self, linesearchmethod: LineSearch, maxiterations=15, epsilon=1e-3, minreduction=1e-4, differencing=Optimizer.Differencing.forward):
@@ -26,6 +27,7 @@ class GaussNewtonOptimizer(Optimizer):
         result.addRunMetadata("parametermanager", evaluator.parametermanager)
 
         result.log("-- Starting newton method. --")
+        newtonOptimizer_logger.info("Starting newton method.")
 
         targetdata = target.getNumpyArray()
 
@@ -41,18 +43,22 @@ class GaussNewtonOptimizer(Optimizer):
                     weight_vector[i] = evaluator.weight[curr_weight_index]
             except IndexError as exc:
                 result.log("Error: Not enough weights given.")
+                newtonOptimizer_logger.error("Error: Not enough weights given.")
                 raise IndexError from exc
 
         last_S = -1
         first_S = -1
 
         for i in range(self.maxiterations):
+            newtonOptimizer_logger.debug(f"Starting iteration {i} with parameters {guess}")
 
             jacobi_result = self.getJacobiMatrix(guess, evaluator, target, result)
             if jacobi_result is None:
                 result.log("Error calculating Jacobi matrix, UG run did not finish")
                 result.log(evaluator.getStatistics())
                 result.save()
+                newtonOptimizer_logger.error("Error calculating Jacobi matrix, UG run did not finish")
+                newtonOptimizer_logger.info(evaluator.getStatistics())
                 return
 
             V, measurement_evaluation = jacobi_result
@@ -100,6 +106,7 @@ class GaussNewtonOptimizer(Optimizer):
                 result.addMetric("reduction", S / last_S)
 
             result.log("[" + str(i) + "]: x=" + str(guess) + ", residual norm S=" + str(S))
+            newtonOptimizer_logger.info(f"guess: {guess}, residual norm S: {S}")
 
             # calculate Gauss-Newton step direction (p. 40)
             Q1, R1 = np.linalg.qr(V, mode='reduced')
@@ -107,6 +114,7 @@ class GaussNewtonOptimizer(Optimizer):
             delta = -np.linalg.solve(R1, w)
 
             result.log("stepdirection is " + str(delta))
+            newtonOptimizer_logger.info(f"stepdirection: {delta}")
 
             # approximation of the hessian (X^T * X)^-1 = (R1^T * R1)^-1
             hessian = np.linalg.inv(np.matmul(np.transpose(R1), R1))
@@ -114,6 +122,8 @@ class GaussNewtonOptimizer(Optimizer):
 
             result.addMetric("covariance", covariance_matrix)
             result.addMetric("hessian", hessian)
+            newtonOptimizer_logger.info(f"covariance matrix: {covariance_matrix}")
+            newtonOptimizer_logger.info(f"hessian: {hessian}")
 
             # construct correlation matrix (see p. 22 of Bates/Watts)
             R1inv = np.linalg.inv(R1)
@@ -121,16 +131,19 @@ class GaussNewtonOptimizer(Optimizer):
             L = np.matmul(Dinv, R1inv)
             C = np.matmul(L, np.transpose(L))
             result.addMetric("correlation", C)
+            newtonOptimizer_logger.info(f"correlation matrix: {C}")
 
             # calculate standard error for the parameters (p.21)
             s = np.sqrt(variance)
             errors = s * np.linalg.norm(R1inv, axis=1)
             result.addMetric("errors", errors)
+            newtonOptimizer_logger.info(f"errors: {errors}")
 
             # cancel the optimization when the reduction of the norm of the residuals is below
             # the threshhold and the confidence of the calibrated parameters is sufficiently low
             if S / first_S < self.minreduction:
                 result.log("-- Newton method converged. --")
+                newtonOptimizer_logger.info("Newton method converged.")
                 result.commitIteration()
                 break
 
@@ -139,8 +152,11 @@ class GaussNewtonOptimizer(Optimizer):
 
             if nextguess is None:
                 result.log("-- Newton method did not converge. --")
+                newtonOptimizer_logger.debug("No next guess found.")
+                newtonOptimizer_logger.error("Newton method did not converge.")
                 result.commitIteration()
                 result.log(evaluator.getStatistics())
+                newtonOptimizer_logger.info(evaluator.getStatistics())
                 result.save()
                 return result
 
@@ -151,6 +167,8 @@ class GaussNewtonOptimizer(Optimizer):
 
         if i == self.maxiterations - 1:
             result.log("-- Newton method did not converge. --")
+            newtonOptimizer_logger.debug(f"Max iterations reached with {i} iterations.")
+            newtonOptimizer_logger.error("Newton method did not converge.")
 
         result.log(evaluator.getStatistics())
         result.save()

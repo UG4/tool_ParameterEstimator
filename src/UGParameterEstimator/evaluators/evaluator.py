@@ -142,7 +142,7 @@ class Evaluator(ABC):
         import UGParameterEstimator
         if "UGSUBMIT_TYPE" in os.environ:
             print("Detected cluster " + os.environ["UGSUBMIT_TYPE"] + ", using ClusterEvaluator")
-            evaluator_logger.debug("Detected cluster " + os.environ["UGSUBMIT_TYPE"] + ", using ClusterEvaluator")
+            evaluator_logger.info("Detected cluster " + os.environ["UGSUBMIT_TYPE"] + ", using ClusterEvaluator")
             return UGParameterEstimator.ClusterEvaluator(
                 luafilename=luafile,
                 directory=directory,
