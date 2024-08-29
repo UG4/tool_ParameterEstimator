@@ -1,24 +1,22 @@
-#!/usr/bin/env python3
-
-import subprocess
-import os
-import time
-import numpy as np
+"""This module contains the base class for all optimizers."""
 from enum import Enum
-from UGParameterEstimator import Result, LineSearch, Evaluator, ParameterManager, ErroredEvaluation
 from abc import ABC, abstractmethod
+from UGParameterEstimator import Result, ErroredEvaluation, setup_logger
+import numpy as np
+
+optimizer_logger = setup_logger.logger.getChild("optimizer")
 
 
 class Optimizer(ABC):
-    """A base class for all optimizers, defining the interface and common helper methods
-    """
+    """A base class for all optimizers, defining the interface and common helper methods."""
 
     Differencing = Enum("Differencing", "central forward pure_forward pure_central")
 
     def __init__(self, epsilon, differencing: Differencing):
         """Class constructor. Should be called by all classes implementing an optimizer.
 
-        :param epsilon: The value of epsilon to use when doing finite differencing. If a value lower than 0 is supplied,
+        :param epsilon: The value of epsilon to use when doing finite differencing.
+                        If a value lower than 0 is supplied,
         a good guess (sqrt of machine precision) is used.
         :type epsilon: float
         :param differencing: the type of differencing to use to calculate the jacobi matrix
@@ -39,7 +37,7 @@ class Optimizer(ABC):
         :param evaluations: the evaluations to convert
         :type evaluations: list of Evaluations
         :param target: Evaluation describing the format/time steps
-        each evaluation should be converted/interpolated to
+                       each evaluation should be converted/interpolated to
         :type target: Evaluation
         :return: the results of the covnertions
         :rtype: list of numpy arrays
@@ -71,6 +69,7 @@ class Optimizer(ABC):
         :return: the jacobi matrix, and the evaluation at 'point'
         :rtype: tuple (numpy array, Evaluation)
         """
+        optimizer_logger.debug("Calculating jacobi matrix at point " + str(point))
         jacobi = []
 
         neededevaluations = []
@@ -110,6 +109,7 @@ class Optimizer(ABC):
                 neededevaluations.append(changedPos)
                 neededevaluations.append(changedNeg)
 
+        optimizer_logger.debug("Starting evaluations for jacobi matrix with %s", neededevaluations)
         with evaluator:
             evaluations = evaluator.evaluate(neededevaluations, True, "jacobi-matrix")
 
@@ -142,11 +142,20 @@ class Optimizer(ABC):
                 column = (results[i + 1] - undisturbed) / (self.finite_differencing_epsilon)
             elif self.differencing == Optimizer.Differencing.central:
                 if p == 0:
-                    column = (results[2 * i + 1] - results[2 * i + 2]) / (2 * self.finite_differencing_epsilon)
+                    column = (
+                        (results[2 * i + 1] - results[2 * i + 2]) /
+                        (2 * self.finite_differencing_epsilon)
+                    )
                 else:
-                    column = (results[2 * i + 1] - results[2 * i + 2]) / (2 * self.finite_differencing_epsilon * p)
+                    column = (
+                        (results[2 * i + 1] - results[2 * i + 2]) /
+                        (2 * self.finite_differencing_epsilon * p)
+                    )
             elif self.differencing == Optimizer.Differencing.pure_central:
-                column = (results[2 * i + 1] - results[2 * i + 2]) / (2 * self.finite_differencing_epsilon)
+                column = (
+                    (results[2 * i + 1] - results[2 * i + 2]) /
+                    (2 * self.finite_differencing_epsilon)
+                )
             jacobi.append(column)
 
         return (np.array(jacobi).transpose(), evaluations[0])
@@ -164,4 +173,3 @@ class Optimizer(ABC):
         :param result: Results object to write metadata and iterations to, defaults to Result()
         :type result: Result, optional
         """
-        pass

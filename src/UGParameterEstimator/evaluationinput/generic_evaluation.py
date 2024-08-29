@@ -4,8 +4,8 @@ import os
 import csv
 import json
 import numpy as np
-from .evaluation import Evaluation, ErroredEvaluation
 from UGParameterEstimator import setup_logger
+from .evaluation import Evaluation, ErroredEvaluation
 
 evaluationInput_generic_logger = setup_logger.logger.getChild("evaluationInput_generic")
 
@@ -114,7 +114,8 @@ class GenericEvaluation(Evaluation):
 
         if len(split_times) > 1 and len(split_times) != len(split_target):
             evaluationInput_generic_logger.debug("Target and data not the same discontinuities")
-            evaluationInput_generic_logger.debug(f"len(split_times) = {len(split_times)}; len(split_target) = {len(split_target)}")
+            evaluationInput_generic_logger.debug("len(split_times) = %s; len(split_target) = %s",
+                                                 len(split_times), len(split_target))
             raise Evaluation.IncompatibleFormatError("Target and data not the same discontinuities")
 
         # interpolate
@@ -177,28 +178,31 @@ class GenericEvaluation(Evaluation):
         """
 
         parsedevaluation = cls([], [], evaluation_id, parameters, runtime)
-        evaluationInput_generic_logger.debug(f"Reading csv file from {filename}...")
+        evaluationInput_generic_logger.debug("Reading csv file from %s...", filename)
 
         with open(filename) as csvfile:
             reader = csv.DictReader(csvfile)
 
-            evaluationInput_generic_logger.debug(f"csv file read: {reader}")
+            evaluationInput_generic_logger.debug("csv file read: %s", reader.fieldnames)
 
             isfinished = False
             for row in reader:
-                if list(row.values())[0].startswith("#") or list(row.keys())[0].startswith("#"):  # skip lines starting with #
-                    evaluationInput_generic_logger.debug(f"Found commented line in csv file: {row}")
+                if list(row.values())[0].startswith("#") or list(row.keys())[0].startswith("#"):
+                    # skip lines starting with #
+                    evaluationInput_generic_logger.debug(
+                        "Found commented line in csv file: %s", row
+                    )
                     continue
 
                 if "value" not in row or "time" not in row:
-                    evaluationInput_generic_logger.debug(f"Neither value nor time as key in row")
+                    evaluationInput_generic_logger.debug("Neither value nor time as key in row")
                     return ErroredEvaluation(parameters,
                                              "Malformed data entry!",
                                              evaluation_id,
                                              runtime)
 
                 if list(row.values())[0] == "FINISHED":
-                    evaluationInput_generic_logger.debug(f"Reached end of csv file")
+                    evaluationInput_generic_logger.debug("Reached end of csv file")
                     isfinished = True
                     break
 
@@ -216,7 +220,7 @@ class GenericEvaluation(Evaluation):
 
         if isfinished:
             return parsedevaluation
-        evaluationInput_generic_logger.debug("Did not find FINISHED line, but all rows were read. Raising error...")
+        evaluationInput_generic_logger.error("Did not find FINISHED line, but all rows were read.")
         return ErroredEvaluation(parameters,
                                  "Evaluation did not finish correctly",
                                  evaluation_id,

@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="UGParameterEstimator",
-    version="0.0.3",
+    version="0.1.0",
     url="https://github.com/UG4/ParameterEstimator",
     author="Tim Schön, Moritz Kowalski",
     package_dir={"": "src"},

@@ -1,6 +1,8 @@
-import numpy as np
-import math
+"""This module contains the implementations of different line search algorithms."""
 from abc import ABC, abstractmethod
+import json
+from time import sleep
+import numpy as np
 from UGParameterEstimator import ErroredEvaluation, setup_logger
 
 lineSearch_logger = setup_logger.logger.getChild("lineSearch")
@@ -17,7 +19,7 @@ class LineSearch(ABC):
         :type evaluator: Evaluator
         """
         self.evaluator = evaluator
-    
+
     def measurementToNumpyArrayConverter(self, evaluations, target):
         """Helper function to convert an array of Evaluation.
         Each evaluation will be converted and interpolated using it's
@@ -59,7 +61,6 @@ class LineSearch(ABC):
         lowest residual value. Or (None, None), if an error occurred.
         :type result: tuple (numpy array, scalar)
         """
-        pass
 
 class LinearParallelLineSearch(LineSearch):
     """A line search executing multiple, uniformly distributed
@@ -102,7 +103,7 @@ class LinearParallelLineSearch(LineSearch):
         low = 0                     # current lowest value of the search window
         top = 1                     # current highest value of the search window
         l = 0                       # current interation
-        
+
         overall_minnorm = float("inf")
         overall_minalpha = -1
 
@@ -127,10 +128,12 @@ class LinearParallelLineSearch(LineSearch):
             minnorm = float("inf")
             minindex = -1
 
-            # find the evaluation with lowest residualnorm, and check if all evaluations returned none, i.e. did not finish in UG
+            # find the evaluation with lowest residualnorm,
+            # and check if all evaluations returned none, i.e. did not finish in UG
             for i in range(self.parallel_evaluations):
                 if isinstance(nextevaluations[i], ErroredEvaluation):
-                    result.log("\t\talpha_" + str(i)+ " = " + str(alphas[i])+" errored: " + nextevaluations[i].reason)
+                    result.log("\t\talpha_" + str(i)+ " = " +
+                               str(alphas[i])+" errored: " + nextevaluations[i].reason)
                     all_alphas.append((alphas[i], None))
                     continue
 
@@ -139,20 +142,21 @@ class LinearParallelLineSearch(LineSearch):
                 residual = nextfunctionvalues[i]-target.getNumpyArray()
                 residualnorm = 0.5*residual.dot(residual)
                 all_alphas.append((alphas[i], residualnorm))
-               
-                result.log("\t\talpha_" + str(i) + " = " + str(alphas[i]) + ", evalid=" + str(nextevaluations[i].eval_id) + ", residual = " + str(residualnorm))  
-            
-                if(residualnorm  < minnorm):
+
+                result.log("\t\talpha_" + str(i) + " = " + str(alphas[i]) +
+                           ", evalid=" + str(nextevaluations[i].eval_id) +
+                           ", residual = " + str(residualnorm))
+
+                if residualnorm < minnorm:
                     minnorm = residualnorm
                     minindex = i
-                    if(minnorm < overall_minnorm):
+                    if minnorm < overall_minnorm:
                         overall_minnorm = minnorm
                         overall_minalpha = alphas[minindex]
-            
 
-            if(allNone):
+            if allNone:
                 result.log("\t ["+str(l)+"]: no run finished.")
-                
+
                 if l == self.max_iterations:
                     result.addMetric("lineSearchAlphas", all_alphas)
                     return None, None
@@ -160,7 +164,7 @@ class LinearParallelLineSearch(LineSearch):
                     low = 0
                     top = top/self.parallel_evaluations
                     continue
-                
+
             minindex_alpha = alphas[minindex]
             continue_override = False
 
@@ -175,11 +179,16 @@ class LinearParallelLineSearch(LineSearch):
             else:
                 next_low = max(0, minindex_alpha - (top-low)/4)
                 next_top = minindex_alpha + (top-low)/4
-            
-            lowerbound = 0.5*r.dot(r) + self.c * overall_minalpha * grad.transpose().dot(stepdirection)
-            result.log("\t ["+str(l)+"]: min_alpha = " + str(overall_minalpha) + ", next interval = [" + str(next_low) + ", " + str(next_top) + "], new residualnorm: " + str(overall_minnorm) + ", wolfe lower bound: " + str(lowerbound))
 
-            if((overall_minnorm < lowerbound and not continue_override)):
+            lowerbound = (
+                0.5*r.dot(r) + self.c * overall_minalpha * grad.transpose().dot(stepdirection)
+            )
+            result.log("\t ["+str(l)+"]: min_alpha = " + str(overall_minalpha) +
+                       ", next interval = [" + str(next_low) + ", " + str(next_top) +
+                       "], new residualnorm: " + str(overall_minnorm) +
+                       ", wolfe lower bound: " + str(lowerbound))
+
+            if (overall_minnorm < lowerbound and not continue_override):
                 result.addMetric("alpha", overall_minalpha)
                 result.addMetric("lineSearchAlphas", all_alphas)
                 return guess+overall_minalpha*stepdirection, overall_minnorm
@@ -194,7 +203,7 @@ class LinearParallelLineSearch(LineSearch):
 
             low = next_low
             top = next_top
-                
+
 
 class LogarithmicParallelLineSearch(LineSearch):
     """A parallel implementation of a line search, with the search
@@ -206,7 +215,7 @@ class LogarithmicParallelLineSearch(LineSearch):
     size = 5
     highest_power = 0
     parallel_evaluations = 10  # number of parallel evaluations during the parallel line search
-    c = 1e-3 
+    c = 1e-3
     max_iterations = 2
 
     def __init__(self, evaluator, max_iterations = 2, size = 5, parallel_evaluations = 10):
@@ -216,7 +225,7 @@ class LogarithmicParallelLineSearch(LineSearch):
         :type evaluator: Evaluator
         :param max_iterations: maximum number of iterations, defaults to 3
         :type max_iterations: int, optional
-        :param size: size of the search window, in powers of two. 
+        :param size: size of the search window, in powers of two.
         A value of 5 (default), means the initial search window is between 1 and 1/2^5
         :type size: int, optional
         :param parallel_evaluations: parallel evaluations in each 
@@ -227,16 +236,20 @@ class LogarithmicParallelLineSearch(LineSearch):
         self.max_iterations = max_iterations
         self.size = size
         self.parallel_evaluations = parallel_evaluations
-        lineSearch_logger.debug(f"Using LogarithmicParallelLineSearch with max_iterations={max_iterations}, size={size}, parallel_evaluations={parallel_evaluations}")
+        lineSearch_logger.debug(
+            f"Using LogarithmicParallelLineSearch with "
+            f"max_iterations={max_iterations}, "
+            f"size={size}, "
+            f"parallel_evaluations={parallel_evaluations}"
+        )
 
     def doLineSearch(self, stepdirection, guess, target, J, r, result):
-
         # calculate the gradient at the current point
         grad = J.transpose().dot(r)
         l = 0
         highest_power = self.highest_power
         all_alphas = []
-        
+
         result.addRunMetadata("ls_maxiterations", self.max_iterations)
         result.addRunMetadata("ls_size", self.size)
         result.addRunMetadata("ls_parallel_evaluations", self.parallel_evaluations)
@@ -244,9 +257,19 @@ class LogarithmicParallelLineSearch(LineSearch):
         while True:
             l += 1
             evaluations = []
-            alphas = np.logspace(highest_power-self.size, highest_power, base=2, num=self.parallel_evaluations)
+            alphas = np.logspace(
+                highest_power-self.size,
+                highest_power,
+                base=2,
+                num=self.parallel_evaluations)
             for i in range(self.parallel_evaluations):
                 evaluations.append(guess+alphas[i]*stepdirection)
+
+            # ============= DEBUG =============
+            for eval_i in range(self.parallel_evaluations):
+                self.saveRunToFile(f"run_{eval_i}.json", evaluations[eval_i])
+                print(f"Saved run_{eval_i}.json")
+                sleep(10)
 
             with self.evaluator:
                 nextevaluations = self.evaluator.evaluate(evaluations, True, "linesearch")
@@ -257,10 +280,12 @@ class LogarithmicParallelLineSearch(LineSearch):
             minnorm = float("inf")
             minindex = -1
 
-            # find the evaluation with lowest residualnorm, and check if all evaluations returned none, i.e. did not finish in UG
+            # find the evaluation with lowest residualnorm,
+            # and check if all evaluations returned none, i.e. did not finish in UG
             for i in range(self.parallel_evaluations):
                 if isinstance(nextevaluations[i], ErroredEvaluation):
-                    result.log("\t\talpha_" + str(i)+ " = " + str(alphas[i]) + " did not finish: : " + nextevaluations[i].reason)
+                    result.log("\t\talpha_" + str(i)+ " = " + str(alphas[i]) +
+                               " did not finish: : " + nextevaluations[i].reason)
                     all_alphas.append((alphas[i], None))
                     continue
 
@@ -270,44 +295,76 @@ class LogarithmicParallelLineSearch(LineSearch):
                 residualnorm = 0.5*residual.dot(residual)
                 all_alphas.append((alphas[i], residualnorm))
 
-                result.log("\t\talpha_" + str(i) + " = " + str(alphas[i]) + ", evalid=" + str(nextevaluations[i].eval_id) + ", residual = " + str(residualnorm))
-                
-                if(residualnorm < minnorm):
+                result.log("\t\talpha_" + str(i) + " = " + str(alphas[i]) +
+                           ", evalid=" + str(nextevaluations[i].eval_id) +
+                           ", residual = " + str(residualnorm))
+                lineSearch_logger.info("alpha_%s = %s, residual = %s, evalid = %s",
+                                       i, alphas[i], residualnorm, nextevaluations[i].eval_id)
+
+                if residualnorm < minnorm:
                     minnorm = residualnorm
                     minindex = i
-            
-            if(allNone):
+                    lineSearch_logger.debug(
+                        "New min found: alpha_%s = %s, residual = %s, evalid = %s, parameters = %s",
+                        i, alphas[i], residualnorm, nextevaluations[i].eval_id, evaluations[i]
+                    )
+
+            if allNone:
                 result.log("\tno run finished.")
-                
+                lineSearch_logger.error("No run finished.")
+
                 if l == self.max_iterations:
-
                     result.addMetric("lineSearchAlphas", all_alphas)
+                    lineSearch_logger.error("Max iterations reached, no suitable alpha found.")
                     return None, None
-                else:
-                    highest_power -= self.size
-                    continue
-            
-            minindex_alpha = alphas[minindex]
 
-            lowerbound = 0.5*r.dot(r) + self.c * minindex_alpha * grad.transpose().dot(stepdirection)
-            result.log("\t ["+str(l)+"]: min_alpha = " + str(minindex_alpha) + ", with cost: " + str(minnorm) + ", wolfe lower bound: " + str(lowerbound))
-            lineSearch_logger.debug(f"best guess is in evaluation {minindex} with value {guess+minindex_alpha*stepdirection}")
-            
+                highest_power -= self.size
+                lineSearch_logger.debug(
+                    f"No suitable alpha found, continuing with higher power {highest_power}"
+                )
+                continue
+
+            minindex_alpha = alphas[minindex]
+            lineSearch_logger.debug(
+                f"Best guess is in evaluation {minindex} "
+                f"with value {guess+minindex_alpha*stepdirection} and residual {minnorm} "
+                f"in iteration {l} with parameters {evaluations[minindex]}"
+            )
+
+            lowerbound = 0.5*r.dot(r) + self.c*minindex_alpha * grad.transpose().dot(stepdirection)
+            result.log("\t ["+str(l)+"]: min_alpha = " + str(minindex_alpha) +
+                       ", with cost: " + str(minnorm) +
+                       ", wolfe lower bound: " + str(lowerbound))
+            lineSearch_logger.debug(
+                f"best guess is in evaluation {minindex} "
+                f"with value {guess+minindex_alpha*stepdirection}"
+            )
+            self.saveRunToFile(self.evaluator.bestRunFile, nextevaluations[minindex])
+
             if minnorm < lowerbound and minindex != 0:
                 result.addMetric("alpha", minindex_alpha)
                 result.addMetric("lineSearchAlphas", all_alphas)
                 return guess+minindex_alpha*stepdirection, minnorm
-            elif l == self.max_iterations:
+
+            if l == self.max_iterations:
                 if minnorm < lowerbound:
                     result.addMetric("alpha", minindex_alpha)
                     result.addMetric("lineSearchAlphas", all_alphas)
                     return guess+minindex_alpha*stepdirection, minnorm
                 result.addMetric("lineSearchAlphas", all_alphas)
                 return None, None
-            
+
             highest_power -= self.size
-            lineSearch_logger.debug(f"No suitable alpha found, continuing with higher power {highest_power}")
-            
+            lineSearch_logger.debug(
+                f"No suitable alpha found, continuing with higher power {highest_power}"
+            )
+
+    def saveRunToFile(self, filename, run):
+        """Saves the given run to a json-file, overrides if file exists"""
+        with open(filename, "w") as f:
+            json.dump(run.toDict(), f)
+
+
 class BacktrackingLineSearch(LineSearch):
     """An serial (as in not parallelized) version of a backtracking line search,
     halving the step size if no suitable step size according to the first
@@ -320,36 +377,37 @@ class BacktrackingLineSearch(LineSearch):
     max_iterations = 15
 
     def doLineSearch(self, stepdirection, guess, target, J, r, result):
-
         # do backtracking line search
-        grad = J.transpose().dot(r)   
+        grad = J.transpose().dot(r)
         alpha = 1
         l = 0
 
-        while True:                 
-            nextguess = guess+alpha*stepdirection
-            with self.evaluator:            
+        while True:
+            nextguess = guess + alpha*stepdirection
+            with self.evaluator:
                 nextevaluation = self.evaluator.evaluate([nextguess], True, "linesearch")
 
             if nextevaluation is None or isinstance(nextevaluation, ErroredEvaluation):
                 return None, None
-            
+
             nextfunctionvalue = self.measurementToNumpyArrayConverter(nextevaluation, target)[0]
 
             residual = nextfunctionvalue-target.getNumpyArray()
-            nextresidualnorm = 0.5*residual.dot(residual)  
+            nextresidualnorm = 0.5*residual.dot(residual)
 
             # wolfe bound
             lowerbound = 0.5*r.dot(r) + self.c * alpha * grad.transpose().dot(stepdirection)
 
-            result.log("\t\t ["+str(l)+"]: alpha = " + str(alpha) + ", new residualnorm: " + str(nextresidualnorm) + ", wolfe lower bound: " + str(lowerbound))
+            result.log("\t\t ["+str(l)+"]: alpha = " + str(alpha) +
+                       ", new residualnorm: " + str(nextresidualnorm) +
+                       ", wolfe lower bound: " + str(lowerbound))
             l += 1
 
             result.addMetric("alpha",alpha)
 
-            if(nextresidualnorm <= lowerbound):
+            if nextresidualnorm <= lowerbound:
                 return nextguess, nextresidualnorm
             alpha = alpha * self.rho
 
-            if(l == self.max_iterations):
+            if l == self.max_iterations:
                 return None, None

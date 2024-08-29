@@ -15,7 +15,7 @@ class LocalEvaluator(Evaluator):
     Output of UG4 is redirected into a separate <id>_ug_output.txt file.
 
     """
-    def __init__(self, luafile, directory, parametermanager: ParameterManager, evaluation_type: Evaluation, parameter_output_adapter: ParameterOutputAdapter, fixedparameters={}, threadcount=10, cliparameters=[], weight=[]):
+    def __init__(self, luafile, directory, parametermanager: ParameterManager, evaluation_type: Evaluation, parameter_output_adapter: ParameterOutputAdapter, fixedparameters={}, threadcount=10, cliparameters=[], weight=[], bestRunFile="bestRun.json"):
         """Class constructor
 
         :param luafilename: path to the luafile to call for every evaluation
@@ -34,8 +34,11 @@ class LocalEvaluator(Evaluator):
         :type threadcount: int, optional
         :param cliparameters: list of command line parameters to append to subprocess call. use separate entries
                 for places that would normally require a space.
-        :param weight: list of weights for each parameter
         :type cliparameters: list of strings, optional
+        :param weight: list of weights for each parameter
+        :type weight: list of float, optional
+        :param bestRunFile: path to the file where the best run should be stored
+        :type bestRunFile: string, optional
         """
         self.directory = directory
         self.parametermanager = parametermanager
@@ -49,6 +52,7 @@ class LocalEvaluator(Evaluator):
         self.threadcount = threadcount
         self.cliparameters = cliparameters
         self.weight = weight
+        self.bestRunFile = bestRunFile
 
         if not os.path.exists(self.directory):
             os.mkdir(self.directory)
