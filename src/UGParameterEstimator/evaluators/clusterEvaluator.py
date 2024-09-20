@@ -34,7 +34,7 @@ class ClusterEvaluator(Evaluator):
                  parametermanager: ParameterManager,
                  evaluation_type,
                  parameter_output_adapter: ParameterOutputAdapter,
-                 fixedparameters={},
+                 fixedparameters=None,
                  threadcount=10,
                  cliparameters=None,
                  ugsubmitparameters=None,
